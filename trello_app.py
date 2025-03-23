@@ -12,10 +12,10 @@ class TrelloApp:
         self.appbar = ft.AppBar(
             leading = ft.Icon(ft.Icons.MOOD),
             leading_width = 100,
-            title = ft.Text("(Not) Trello",size = 32, text_align = "start"),
+            title = ft.Text("(Not) Trello", size = 32, text_align = "start"),
             center_title = False,
             toolbar_height = 75,
-            bgcolor = ft.Colors.PURPLE_900,
+            bgcolor = ft.Colors.PURPLE_700,
             actions = [
                 ft.Container(
                     content = ft.PopupMenuButton(
