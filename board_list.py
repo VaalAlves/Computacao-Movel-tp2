@@ -272,18 +272,26 @@ class BoardList(ft.Container):
         self.items.controls[controls_list.index(item)].controls[0].opacity = opacity
         self.view.update()
 
-    def filter_items_by_tag(self, tag):
+    def filter_items(self, tag_text="", priority="all"):
         for item_container in self.items.controls:
             if len(item_container.controls) > 1:
                 item = item_container.controls[1]
-                has_tag = False
-                if hasattr(item, 'tags'):
-                    for item_tag in item.tags:
-                        if tag.lower() in item_tag.lower():
-                            has_tag = True
-                            break
                 
-                item_container.visible = has_tag
+                has_tag = True
+                if tag_text:
+                    has_tag = False
+                    if hasattr(item, 'tags'):
+                        for item_tag in item.tags:
+                            if tag_text.lower() in item_tag.lower():
+                                has_tag = True
+                                break
+                
+                matches_priority = True
+                if priority != "all" and hasattr(item, 'priority'):
+                    matches_priority = (item.priority == priority)
+                
+                item_container.visible = has_tag and matches_priority
+        
         self.update()
     
     def show_all_items(self):

@@ -16,8 +16,17 @@ class Item(ft.Container):
         self.list = list
         self.item_text = item_text
         self.tags = []
+        self.priority = "normal"
         
         self.checkbox = ft.Checkbox(label=f"{self.item_text}", width=200)
+        
+        self.priority_indicator = ft.Container(
+            width=10,
+            height=10,
+            border_radius=ft.border_radius.all(5),
+            bgcolor=self.get_priority_color(),
+            margin=ft.margin.only(right=5)
+        )
         
         self.popup_menu = ft.PopupMenuButton(
             items=[
@@ -28,6 +37,15 @@ class Item(ft.Container):
                         text_align=ft.TextAlign.CENTER,
                     ),
                     on_click=self.edit_item,
+                ),
+                ft.PopupMenuItem(),
+                ft.PopupMenuItem(
+                    content=ft.Text(
+                        value="Set Priority",
+                        theme_style=ft.TextThemeStyle.LABEL_MEDIUM,
+                        text_align=ft.TextAlign.CENTER,
+                    ),
+                    on_click=self.change_priority,
                 ),
                 ft.PopupMenuItem(),
                 ft.PopupMenuItem(
@@ -54,7 +72,13 @@ class Item(ft.Container):
             content=ft.Row(
                 [
                     ft.Container(
-                        content=self.checkbox,
+                        content=ft.Row(
+                            [
+                                self.priority_indicator,
+                                self.checkbox
+                            ],
+                            alignment=ft.MainAxisAlignment.START,
+                        ),
                         border_radius=ft.border_radius.all(5),
                         expand=True,
                     ),
@@ -201,3 +225,22 @@ class Item(ft.Container):
         self.list.set_indicator_opacity(self, 0.0)
         self.card_item.elevation = 1
         self.page.update()
+
+    def get_priority_color(self):
+        if self.priority == "high":
+            return ft.colors.RED_500
+        elif self.priority == "low":
+            return ft.colors.GREEN_500
+        else:
+            return ft.colors.GREY_400
+    
+    def change_priority(self, e):
+        if self.priority == "normal":
+            self.priority = "high"
+        elif self.priority == "high":
+            self.priority = "low"
+        else:
+            self.priority = "normal"
+        
+        self.priority_indicator.bgcolor = self.get_priority_color()
+        self.update()

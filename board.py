@@ -19,21 +19,36 @@ class Board(ft.Container):
             width=200,
             height=40,
             content_padding=ft.padding.only(left=10),
-            suffix_icon=ft.icons.SEARCH,
+            suffix_icon=ft.Icons.SEARCH,
             on_change=self.filter_by_tag
         )
         
         self.clear_search_button = ft.IconButton(
-            icon=ft.icons.CLEAR,
+            icon=ft.Icons.CLEAR,
             tooltip="Clear search",
             on_click=self.clear_search,
             visible=False
         )
         
+        self.priority_filter = ft.Dropdown(
+            width=150,
+            label="Priority",
+            hint_text="Filter by priority",
+            options=[
+                ft.dropdown.Option("all", "All Priorities"),
+                ft.dropdown.Option("high", "High Priority"),
+                ft.dropdown.Option("normal", "Normal Priority"),
+                ft.dropdown.Option("low", "Low Priority"),
+            ],
+            value="all",
+            on_change=self.filter_by_priority
+        )
+        
         self.search_bar = ft.Row(
             [
                 self.search_field,
-                self.clear_search_button
+                self.clear_search_button,
+                self.priority_filter
             ],
             alignment=ft.MainAxisAlignment.START,
             spacing=10
@@ -76,20 +91,22 @@ class Board(ft.Container):
         search_text = self.search_field.value.strip().lower()
         self.clear_search_button.visible = bool(search_text)
         
-        if not search_text:
+        if not search_text and self.priority_filter.value == "all":
             self.show_all_items()
             return
         
-        for control in self.board_content.controls:
-            if isinstance(control, BoardList):
-                control.filter_items_by_tag(search_text)
-        
+        self.apply_filters()
         self.page.update()
     
     def clear_search(self, e):
         self.search_field.value = ""
         self.clear_search_button.visible = False
-        self.show_all_items()
+        
+        if self.priority_filter.value == "all":
+            self.show_all_items()
+        else:
+            self.apply_filters()
+            
         self.page.update()
     
     def show_all_items(self):
@@ -97,6 +114,24 @@ class Board(ft.Container):
             if isinstance(control, BoardList):
                 control.show_all_items()
         self.page.update()
+
+    def filter_by_priority(self, e):
+        priority = self.priority_filter.value
+        
+        if priority == "all" and (not self.search_field.value or self.search_field.value.strip() == ""):
+            self.show_all_items()
+            return
+        
+        self.apply_filters()
+        self.page.update()
+    
+    def apply_filters(self):
+        search_text = self.search_field.value.strip().lower()
+        priority = self.priority_filter.value
+        
+        for control in self.board_content.controls:
+            if isinstance(control, BoardList):
+                control.filter_items(search_text, priority)
 
     def resize(self, nav_rail_extended, width, height):
         self.board_content.width = (width - 310) if nav_rail_extended else (width - 50)
