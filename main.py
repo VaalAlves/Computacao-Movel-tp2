@@ -5,21 +5,33 @@ from board import Board
 from user import User
 from data_store import DataStore
 from memory_store import InMemoryStore
-from user import User
+from theme_manager import ThemeManager
 
 class TrelloApp(AppLayout):
     def __init__(self, page: ft.Page, store: DataStore):
         self.page: ft.Page = page
         self.store: DataStore = store
-        self.user: str | None = None
+        self.user: User | None = None
         self.page.on_route_change = self.route_change
         self.boards = self.store.get_boards()
+        
+        self.current_theme = "light"
+        self.theme_colors = ThemeManager.get_theme_colors(self.current_theme)
+        
         self.login_profile_button = ft.PopupMenuItem(text = "Log in", on_click = self.login)
+        self.theme_toggle_button = ft.PopupMenuItem(
+            text = "Switch to Dark Mode", 
+            on_click = self.toggle_theme
+        )
+        
         self.appbar_items = [
             self.login_profile_button,
             ft.PopupMenuItem(),
+            self.theme_toggle_button,
+            ft.PopupMenuItem(),
             ft.PopupMenuItem(text = "Settings"),
         ]
+        
         self.appbar = ft.AppBar(
             leading = ft.Icon(ft.Icons.GRID_GOLDENRATIO_ROUNDED),
             leading_width = 100,
@@ -28,10 +40,11 @@ class TrelloApp(AppLayout):
                 font_family = "Helvetica",
                 size = 32,
                 text_align = ft.TextAlign.START,
+                color = self.theme_colors["text"],
             ),
             center_title = False,
             toolbar_height = 75,
-            bgcolor = ft.Colors.PURPLE_400,
+            bgcolor = self.theme_colors["appbar"],
             actions = [
                 ft.Container(
                     content = ft.PopupMenuButton(items = self.appbar_items),
@@ -40,8 +53,10 @@ class TrelloApp(AppLayout):
             ],
         )
         self.page.appbar = self.appbar
-
+        
+        self.page.bgcolor = self.theme_colors["background"]
         self.page.update()
+        
         super().__init__(
             self,
             self.page,
@@ -50,21 +65,68 @@ class TrelloApp(AppLayout):
             expand = True,
             vertical_alignment = ft.CrossAxisAlignment.START,
         )
-
-    def initialize(self):
-        self.page.views.append(
-            ft.View(
-                "/",
-                [self.appbar, self],
-                padding = ft.padding.all(0),
-                bgcolor = ft.Colors.GREY_200,
-            )
-        )
+    
+    def toggle_theme(self, e=None):
+        if self.user:
+            self.current_theme = self.user.toggle_theme()
+        else:
+            self.current_theme = "dark" if self.current_theme == "light" else "light"
+        
+        self.theme_colors = ThemeManager.get_theme_colors(self.current_theme)
+        
+        self.theme_toggle_button.text = "Switch to Light Mode" if self.current_theme == "dark" else "Switch to Dark Mode"
+        
+        self.apply_theme()
+        
         self.page.update()
-        if len(self.boards) == 0:
-            self.create_new_board("My Board")
-        self.page.go("/")
-
+    
+    def apply_theme(self):
+        self.page.bgcolor = self.theme_colors["background"]
+        
+        self.appbar.bgcolor = self.theme_colors["appbar"]
+        self.appbar.title.color = self.theme_colors["text"]
+        
+        if hasattr(self, "sidebar"):
+            self.sidebar.bgcolor = self.theme_colors["sidebar"]
+            self.sidebar.top_nav_rail.bgcolor = self.theme_colors["sidebar"]
+            self.sidebar.bottom_nav_rail.bgcolor = self.theme_colors["sidebar"]
+            
+            for dest in self.sidebar.top_nav_rail.destinations:
+                if hasattr(dest, "label_content") and isinstance(dest.label_content, ft.Text):
+                    dest.label_content.color = self.theme_colors["sidebar_text"]
+            
+            for dest in self.sidebar.bottom_nav_rail.destinations:
+                if hasattr(dest, "label_content") and isinstance(dest.label_content, ft.Text):
+                    dest.label_content.color = self.theme_colors["sidebar_text"]
+        
+        if hasattr(self, "active_view") and self.active_view:
+            if isinstance(self.active_view, Board):
+                self.active_view.board_lists.bgcolor = self.theme_colors["background"]
+                
+                for control in self.active_view.board_content.controls:
+                    if isinstance(control, BoardList):
+                        if hasattr(control, "header"):
+                            for header_control in control.header.controls:
+                                if isinstance(header_control, ft.Text):
+                                    header_control.color = self.theme_colors["list_title"]
+                            
+                        for item_container in control.items.controls:
+                            if len(item_container.controls) > 1:
+                                item = item_container.controls[1]
+                                if hasattr(item, "checkbox"):
+                                    item.checkbox.label_style = ft.TextStyle(
+                                        color=self.theme_colors["item_text"]
+                                    )
+            elif self.active_view == self.all_boards_view:
+                self.all_boards_view.bgcolor = self.theme_colors["background"]
+                
+                for control in self.all_boards_view.controls:
+                    if isinstance(control, ft.Row) and len(control.controls) > 0:
+                        for row_control in control.controls:
+                            if isinstance(row_control, ft.Container) and hasattr(row_control, "content"):
+                                if isinstance(row_control.content, ft.Text):
+                                    row_control.content.color = self.theme_colors["board_text"]
+    
     def login(self, e):
         def close_dlg(e):
             if user_name.value == "" or password.value == "":
@@ -76,8 +138,13 @@ class TrelloApp(AppLayout):
                 user = User(user_name.value, password.value)
                 if user not in self.store.get_users():
                     self.store.add_user(user)
-                self.user = user_name.value
+                self.user = user
                 self.page.client_storage.set("current_user", user_name.value)
+                
+                self.current_theme = self.user.get_theme()
+                self.theme_colors = ThemeManager.get_theme_colors(self.current_theme)
+                self.theme_toggle_button.text = "Switch to Light Mode" if self.current_theme == "dark" else "Switch to Dark Mode"
+                self.apply_theme()
 
             self.page.close(dialog)
             self.appbar_items[0] = ft.PopupMenuItem(
