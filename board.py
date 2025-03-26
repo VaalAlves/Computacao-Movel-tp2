@@ -13,18 +13,54 @@ class Board(ft.Container):
         self.store: DataStore = store
         self.app = app
         self.name = name
+        
+        self.search_field = ft.TextField(
+            hint_text="Search by tags",
+            width=200,
+            height=40,
+            content_padding=ft.padding.only(left=10),
+            suffix_icon=ft.icons.SEARCH,
+            on_change=self.filter_by_tag
+        )
+        
+        self.clear_search_button = ft.IconButton(
+            icon=ft.icons.CLEAR,
+            tooltip="Clear search",
+            on_click=self.clear_search,
+            visible=False
+        )
+        
+        self.search_bar = ft.Row(
+            [
+                self.search_field,
+                self.clear_search_button
+            ],
+            alignment=ft.MainAxisAlignment.START,
+            spacing=10
+        )
+        
         self.add_list_button = ft.FloatingActionButton(
             icon = ft.Icons.ADD, text = "add a list", height = 30, on_click = self.create_list
         )
 
-        self.board_lists = ft.Row(
+        self.board_content = ft.Row(
             controls = [self.add_list_button],
             vertical_alignment=ft.CrossAxisAlignment.START,
             scroll = ft.ScrollMode.AUTO,
             expand = True,
             width = (self.app.page.width - 310),
-            height = (self.app.page.height - 95),
+            height = (self.app.page.height - 135),
         )
+        
+        self.board_lists = ft.Column(
+            [
+                self.search_bar,
+                self.board_content
+            ],
+            spacing=10,
+            expand=True
+        )
+        
         for l in self.store.get_lists_by_board(self.board_id):
             self.add_list(l)
 
@@ -35,9 +71,35 @@ class Board(ft.Container):
             padding = ft.padding.only(top = 10, right = 0),
             height = self.app.page.height,
         )
+        
+    def filter_by_tag(self, e):
+        search_text = self.search_field.value.strip().lower()
+        self.clear_search_button.visible = bool(search_text)
+        
+        if not search_text:
+            self.show_all_items()
+            return
+        
+        for control in self.board_content.controls:
+            if isinstance(control, BoardList):
+                control.filter_items_by_tag(search_text)
+        
+        self.page.update()
+    
+    def clear_search(self, e):
+        self.search_field.value = ""
+        self.clear_search_button.visible = False
+        self.show_all_items()
+        self.page.update()
+    
+    def show_all_items(self):
+        for control in self.board_content.controls:
+            if isinstance(control, BoardList):
+                control.show_all_items()
+        self.page.update()
 
     def resize(self, nav_rail_extended, width, height):
-        self.board_lists.width = (width - 310) if nav_rail_extended else (width - 50)
+        self.board_content.width = (width - 310) if nav_rail_extended else (width - 50)
         self.height = height
         self.update()
 
@@ -128,12 +190,12 @@ class Board(ft.Container):
         dialog_text.focus()
 
     def remove_list(self, list: BoardList, e):
-        self.board_lists.controls.remove(list)
+        self.board_content.controls.remove(list)
         self.store.remove_list(self.board_id, list.board_list_id)
         self.page.update()
 
     def add_list(self, list):
-        self.board_lists.controls.insert(-1, list)
+        self.board_content.controls.insert(-1, list)
         self.store.add_list(self.board_id, list)
         self.page.update()
 

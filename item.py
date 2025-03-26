@@ -15,6 +15,7 @@ class Item(ft.Container):
         self.store: DataStore = store
         self.list = list
         self.item_text = item_text
+        self.tags = []
         
         self.checkbox = ft.Checkbox(label=f"{self.item_text}", width=200)
         
@@ -27,6 +28,15 @@ class Item(ft.Container):
                         text_align=ft.TextAlign.CENTER,
                     ),
                     on_click=self.edit_item,
+                ),
+                ft.PopupMenuItem(),
+                ft.PopupMenuItem(
+                    content=ft.Text(
+                        value="Add Tag",
+                        theme_style=ft.TextThemeStyle.LABEL_MEDIUM,
+                        text_align=ft.TextAlign.CENTER,
+                    ),
+                    on_click=self.add_tag,
                 ),
                 ft.PopupMenuItem(),
                 ft.PopupMenuItem(
@@ -99,6 +109,66 @@ class Item(ft.Container):
 
     def delete_item(self, e):
         self.list.remove_item(self)
+        
+    def add_tag(self, e):
+        def close_dlg(e):
+            if (hasattr(e.control, "text") and not e.control.text == "Cancel") or (
+                type(e.control) is ft.TextField and e.control.value != ""
+            ):
+                tag = tag_text.value.strip()
+                if tag and tag not in self.tags:
+                    self.tags.append(tag)
+                    self.update_tag_display()
+            self.page.close(dialog)
+            
+        def textfield_change(e):
+            if tag_text.value.strip() == "":
+                add_button.disabled = True
+            else:
+                add_button.disabled = False
+            self.page.update()
+            
+        tag_text = ft.TextField(
+            label="Tag Name", 
+            on_submit=close_dlg, 
+            on_change=textfield_change
+        )
+        
+        add_button = ft.ElevatedButton(
+            text="Add", 
+            bgcolor=ft.Colors.PURPLE_400, 
+            on_click=close_dlg, 
+            disabled=True
+        )
+        
+        dialog = ft.AlertDialog(
+            title=ft.Text("Add a tag"),
+            content=ft.Column(
+                [
+                    tag_text,
+                    ft.Row(
+                        [
+                            ft.ElevatedButton(text="Cancel", on_click=close_dlg),
+                            add_button,
+                        ],
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                    ),
+                ],
+                tight=True,
+            ),
+            on_dismiss=lambda e: print("Modal dialog dismissed!"),
+        )
+        
+        self.page.open(dialog)
+        tag_text.focus()
+        
+    def update_tag_display(self):
+        if self.tags:
+            tags_text = ", ".join(self.tags)
+            self.checkbox.label = f"{self.item_text} [Tags: {tags_text}]"
+        else:
+            self.checkbox.label = self.item_text
+        self.update()
 
     def drag_accept(self, e):
         src = self.page.get_control(e.src_id)

@@ -271,3 +271,22 @@ class BoardList(ft.Container):
         controls_list = [x.controls[1] for x in self.items.controls]
         self.items.controls[controls_list.index(item)].controls[0].opacity = opacity
         self.view.update()
+
+    def filter_items_by_tag(self, tag):
+        for item_container in self.items.controls:
+            if len(item_container.controls) > 1:
+                item = item_container.controls[1]
+                has_tag = False
+                if hasattr(item, 'tags'):
+                    for item_tag in item.tags:
+                        if tag.lower() in item_tag.lower():
+                            has_tag = True
+                            break
+                
+                item_container.visible = has_tag
+        self.update()
+    
+    def show_all_items(self):
+        for item_container in self.items.controls:
+            item_container.visible = True
+        self.update()
